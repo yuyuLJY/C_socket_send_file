@@ -7,11 +7,11 @@
 #define FILE_SIZE 500
 #define BUFFER_SIZE 1024
 
-//server¶Ë
-//server½ÓÊÕÁ¬½ÓÇëÇó£¬²¢·¢ËÍÎÄ¼ş£¨S->C£©
+//serverç«¯
+//serveræ¥æ”¶è¿æ¥è¯·æ±‚ï¼Œå¹¶å‘é€æ–‡ä»¶ï¼ˆS->Cï¼‰
 int main()
 {
-    //°ó¶¨¶Ë¿Ú
+    //ç»‘å®šç«¯å£
     struct sockaddr_in {
         unsigned short sin_family;
         unsigned short sin_port;
@@ -19,33 +19,33 @@ int main()
         char sin_zero[8];
     }server_addr;
 
-	server_addr.sin_family=AF_INET;   //InternetµØÖ·×å=AF_INET(IPv4Ğ­Òé)
-	server_addr.sin_port=htons(portnum);  //½«Ö÷»ú×Ö½ÚĞò×ª»¯ÎªÍøÂç×Ö½ÚĞò ,portnumÊÇ¶Ë¿ÚºÅ
-	(server_addr.sin_addr).s_addr=htonl(INADDR_ANY);//IPµØÖ·
+	server_addr.sin_family=AF_INET;   //Internetåœ°å€æ—=AF_INET(IPv4åè®®)
+	server_addr.sin_port=htons(portnum);  //å°†ä¸»æœºå­—èŠ‚åºè½¬åŒ–ä¸ºç½‘ç»œå­—èŠ‚åº ,portnumæ˜¯ç«¯å£å·
+	(server_addr.sin_addr).s_addr=htonl(INADDR_ANY);//IPåœ°å€
 
-    //µ÷ÓÃWSAStartup³õÊ¼»¯Ì×½Ó×Ö
+    //è°ƒç”¨WSAStartupåˆå§‹åŒ–å¥—æ¥å­—
     WSADATA WSAData;
     if (WSAStartup(MAKEWORD(2,0), &WSAData) != 0)
     {
         return FALSE;
     }
-    //³õÊ¼»¯Ì×½Ó×Ö
+    //åˆå§‹åŒ–å¥—æ¥å­—
 	int server_fd=socket(AF_INET,SOCK_STREAM,0);
 	if(server_fd==-1)
 	{
-		printf("´´½¨socketÊ§°Ü\n");
+		printf("åˆ›å»ºsocketå¤±è´¥\n");
 		exit(1);
 	}
 
-    // °Ñ¿Í»§¶ËµÄsocketºÍ¿Í»§¶ËµÄsocketµØÖ·½á¹¹°ó¶¨
+    // æŠŠå®¢æˆ·ç«¯çš„socketå’Œå®¢æˆ·ç«¯çš„socketåœ°å€ç»“æ„ç»‘å®š
     if (bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr))==-1)
     {
         printf("Client Bind Port Failed!\n");
         exit(1);
     }
 
-    // server_socketÓÃÓÚ¼àÌı
-    printf("¿ªÊ¼¼àÌı\n");
+    // server_socketç”¨äºç›‘å¬
+    printf("å¼€å§‹ç›‘å¬\n");
     if (listen(server_fd, 10))
     {
         printf("Server Listen Failed!\n");
@@ -53,56 +53,41 @@ int main()
     }
 
     while(1){
-        //¶¨Òå¿Í»§¶ËµÄsocket¿Í»§¶ËµÄµØÖ·½á¹¹
-        struct sockaddr_in client_addr;
-        int length = sizeof(client_addr);
-        int new_server_socket = accept(server_fd, (struct sockaddr*)&client_addr, &length);
-        if (new_server_socket < 0)
-        {
-            printf("Server Accept Failed!\n");
-            break;
-        }
-
-        char buffer[BUFFER_SIZE];
-        memset(buffer, 0,sizeof(buffer));
-        length = recv(new_server_socket, buffer, BUFFER_SIZE, 0);
-        if (length < 0)
-        {
-            printf("Server Recieve Data Failed!\n");//Ã»ÓĞ»ñµÃÊı¾İ
-            break;
-        }
-
-        char file_name[FILE_SIZE + 1];
-        memset(file_name, 0,sizeof(file_name));
-        strncpy(file_name, buffer,
-                strlen(buffer) > FILE_SIZE ? FILE_SIZE : strlen(buffer));
-
-        FILE *fp = fopen(file_name, "r");
-        if (fp == NULL)
-        {
-            printf("File:\t%s Not Found!\n", file_name);
-        }else{
-            memset(buffer, 0,BUFFER_SIZE);
-            int file_block_length = 0;
-            while( (file_block_length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0)
-            {
-                printf("file_block_length = %d\n", file_block_length);
-
-                // ·¢ËÍbufferÖĞµÄ×Ö·û´®µ½new_server_socket,Êµ¼ÊÉÏ¾ÍÊÇ·¢ËÍ¸ø¿Í»§¶Ë
-                if (send(new_server_socket, buffer, file_block_length, 0) < 0)
-                {
-                    printf("Send File:\t%s Failed!\n", file_name);
-                    break;
-                }
-
-                memset(buffer,0, sizeof(buffer));
-            }
-            fclose(fp);
-            printf("File:\t%s Transfer Finished!\n", file_name);
-        }
-        close(new_server_socket);
+        sendfile(server_fd);
     }
     close(server_fd);
-    printf("Hello world!\n");
     return 0;
+}
+
+int sendfile(int server_fd){
+    //å®šä¹‰å®¢æˆ·ç«¯çš„socketå®¢æˆ·ç«¯çš„åœ°å€ç»“æ„
+    char buffer[BUFFER_SIZE];
+    struct sockaddr_in client_addr;
+    int length = sizeof(client_addr);
+    int new_server_socket = accept(server_fd, (struct sockaddr*)&client_addr, &length);
+    if (new_server_socket < 0)
+    {
+        printf("è¿æ¥å¤±è´¥!\n");
+        exit(0);
+    }
+
+    char  *fname="C:\\Users\\yuyu\\Desktop\\æ–°å»ºæ–‡ä»¶å¤¹\\ç½‘ç»œå®‰å…¨\\809.txt";
+    FILE *fp = fopen(fname, "r");
+    if(fp == NULL){
+        printf("æ–‡ä»¶æ‰“ä¸å¼€!\n");
+    }else{
+        memset(buffer, 0,BUFFER_SIZE);
+        int file_block_length = 0;
+        while( (file_block_length = fread(buffer, sizeof(char), BUFFER_SIZE, fp)) > 0){
+            printf("file_block_length = %d\n", file_block_length);
+            if(send(new_server_socket, buffer, file_block_length, 0) < 0){
+                printf("Send File:\t%s Failed!\n", fname);
+                break;
+            }
+            memset(buffer,0, sizeof(buffer));
+        }
+        fclose(fp);
+        printf("File:\t%s Transfer Finished!\n", fname);
+    }
+    close(new_server_socket);
 }
