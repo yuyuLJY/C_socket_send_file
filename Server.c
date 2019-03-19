@@ -1,12 +1,19 @@
-#include <strings.h>
 #include <stdio.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
-#include <WINSOCK2.H>
+#include <unistd.h>
+#include <fcntl.h>
+#include <netinet/in.h>
 
 #define portnum 12345
 #define FILE_SIZE 500
 #define BUFFER_SIZE 1024
-
+#define IP "192.168.126.132"
 //server端
 //server接收连接请求，并发送文件（S->C）
 int main()
@@ -21,14 +28,15 @@ int main()
 
 	server_addr.sin_family=AF_INET;   //Internet地址族=AF_INET(IPv4协议)
 	server_addr.sin_port=htons(portnum);  //将主机字节序转化为网络字节序 ,portnum是端口号
-	(server_addr.sin_addr).s_addr=htonl(INADDR_ANY);//IP地址
-
+	(server_addr.sin_addr).s_addr=inet_addr(IP);//IP地址
+	
+/*
     //调用WSAStartup初始化套接字
     WSADATA WSAData;
     if (WSAStartup(MAKEWORD(2,0), &WSAData) != 0)
     {
         return FALSE;
-    }
+    }*/
     //初始化套接字
 	int server_fd=socket(AF_INET,SOCK_STREAM,0);
 	if(server_fd==-1)
@@ -53,9 +61,15 @@ int main()
     }
 
     while(1){
-        sendfile(server_fd);
+	printf("start while\n");
+        int a  = sendfile(server_fd);
+	if(a==0){
+	break;	
+	}
     }
+	printf("Not while\n");
     close(server_fd);
+	printf("END!!!\n");
     return 0;
 }
 
@@ -71,7 +85,7 @@ int sendfile(int server_fd){
         exit(0);
     }
 
-    char  *fname="C:\\Users\\yuyu\\Desktop\\新建文件夹\\网络安全\\809.txt";
+    char  *fname="/home/nancy/文档/sendFile/test";
     FILE *fp = fopen(fname, "r");
     if(fp == NULL){
         printf("文件打不开!\n");
@@ -90,4 +104,6 @@ int sendfile(int server_fd){
         printf("File:\t%s Transfer Finished!\n", fname);
     }
     close(new_server_socket);
+    printf("sendFileEnd\n");
+	return 0;
 }
